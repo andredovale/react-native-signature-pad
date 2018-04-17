@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { View, WebView, StyleSheet } from 'react-native'
+import { WebView, StyleSheet } from 'react-native'
 import PropTypes from 'prop-types'
 
 import htmlContent from './injectedHtml'
@@ -11,14 +11,16 @@ import injectedExecuteNativeFunction from './injectedJavaScript/executeNativeFun
 class SignaturePad extends Component {
   constructor(props) {
     super(props)
-    this.state = { base64DataUrl: props.dataURL || null }
     const { backgroundColor } = StyleSheet.flatten(props.style)
-    var injectedJavaScript = injectedExecuteNativeFunction
+    const injectedJavaScript = injectedExecuteNativeFunction
       + injectedErrorHandler
       + injectedSignaturePad
       + injectedApplication(props.penColor, backgroundColor, props.dataURL)
-    var html = htmlContent(injectedJavaScript)
-    this.source = {html} // We don't use WebView's injectedJavaScript because on Android, the WebView re-injects the JavaScript upon every url change. Given that we use url changes to communicate signature changes to the React Native app, the JS is re-injected every time a stroke is drawn.
+    const html = htmlContent(injectedJavaScript)
+    this.source = { html } // We don't use WebView's injectedJavaScript because on Android,
+    // the WebView re-injects the JavaScript upon every url change. Given that we use url changes
+    // to communicate signature changes to the React Native app, the JS is re-injected every time
+    // a stroke is drawn.
   }
 
   onNavigationChange(args) {
@@ -28,44 +30,46 @@ class SignaturePad extends Component {
   parseMessageFromWebViewNavigationChange(newUrl) {
     // Example input:
     // applewebdata://4985ECDA-4C2B-4E37-87ED-0070D14EB985#executeFunction=jsError&arguments=%7B%22message%22:%22ReferenceError:%20Can't%20find%20variable:%20WHADDUP%22,%22url%22:%22applewebdata://4985ECDA-4C2B-4E37-87ED-0070D14EB985%22,%22line%22:340,%22column%22:10%7D"
-    // All parameters to the native world are passed via a hash url where every parameter is passed as &[ParameterName]<-[Content]&
-    var hashUrlIndex = newUrl.lastIndexOf('#')
+    // All parameters to the native world are passed via a hash url where every parameter is passed
+    // as &[ParameterName]<-[Content]&
+    const hashUrlIndex = newUrl.lastIndexOf('#')
     if (hashUrlIndex === -1) {
       return
     }
 
-    var hashUrl = newUrl.substring(hashUrlIndex)
+    let hashUrl = newUrl.substring(hashUrlIndex)
     hashUrl = decodeURIComponent(hashUrl)
-    var regexFindAllSubmittedParameters = /&(.*?)&/g
+    const regexFindAllSubmittedParameters = /&(.*?)&/g
 
-    var parameters = {}
-    var parameterMatch = regexFindAllSubmittedParameters.exec(hashUrl)
+    const parameters = {}
+    let parameterMatch = regexFindAllSubmittedParameters.exec(hashUrl)
     if (!parameterMatch) {
       return
     }
 
-    while(parameterMatch) {
-      var parameterPair = parameterMatch[1] //For example executeFunction=jsError or arguments=...
+    while (parameterMatch) {
+      const parameterPair = parameterMatch[1] // For example executeFunction=jsError or
+      // arguments=...
 
-      var parameterPairSplit = parameterPair.split('<-')
+      const parameterPairSplit = parameterPair.split('<-')
       if (parameterPairSplit.length === 2) {
-        parameters[parameterPairSplit[0]] = parameterPairSplit[1]
+        [parameters[parameterPairSplit[0]] = [1]] = parameterPairSplit
       }
 
       parameterMatch = regexFindAllSubmittedParameters.exec(hashUrl)
     }
 
     if (!this.attemptToExecuteNativeFunctionFromWebViewMessage(parameters)) {
-      logger.warn({ parameters, hashUrl }, 'Received an unknown set of parameters from WebView')
+      console.warn({ parameters, hashUrl }, 'Received an unknown set of parameters from WebView')
     }
   }
 
   attemptToExecuteNativeFunctionFromWebViewMessage = (message) => {
     if (message.executeFunction && message.arguments) {
-      var parsedArguments = JSON.parse(message.arguments)
+      const parsedArguments = JSON.parse(message.arguments)
 
-      var referencedFunction = this['bridged_' + message.executeFunction]
-      if (typeof(referencedFunction) === 'function') {
+      const referencedFunction = this[`bridged${message.executeFunction}`]
+      if (typeof referencedFunction === 'function') {
         referencedFunction.apply(this, [parsedArguments])
         return true
       }
@@ -74,20 +78,17 @@ class SignaturePad extends Component {
     return false
   }
 
-  bridged_jsError = (args) => {
+  bridgedjsError = (args) => {
     this.props.onError({ details: args })
   }
 
-  bridged_finishedStroke({ base64DataUrl }) {
+  bridgedfinishedStroke({ base64DataUrl }) {
     this.props.onChange({ base64DataUrl })
-    this.setState({ base64DataUrl })
   }
 
   renderError(args) {
     this.props.onError({ details: args })
   }
-
-  renderLoading(args) {}
 
   render() {
     return (
@@ -120,6 +121,8 @@ SignaturePad.defaultProps = {
   onChange: () => {},
   onError: () => {},
   style: {},
+  penColor: '#000',
+  dataURL: '',
 }
 
 export default SignaturePad
