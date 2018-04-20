@@ -21,6 +21,11 @@ class SignaturePad extends Component {
     // the WebView re-injects the JavaScript upon every url change. Given that we use url changes
     // to communicate signature changes to the React Native app, the JS is re-injected every time
     // a stroke is drawn.
+    this.onNavigationChange = this.onNavigationChange.bind(this)
+    this.parseMessageFromWebViewNavigationChange
+      = this.parseMessageFromWebViewNavigationChange.bind(this)
+    this.attemptToExecuteNativeFunctionFromWebViewMessage
+      = this.attemptToExecuteNativeFunctionFromWebViewMessage.bind(this)
   }
 
   onNavigationChange(args) {
@@ -41,7 +46,7 @@ class SignaturePad extends Component {
     hashUrl = decodeURIComponent(hashUrl)
     const regexFindAllSubmittedParameters = /&(.*?)&/g
 
-    const parameters = {}
+    let parameters = {}
     let parameterMatch = regexFindAllSubmittedParameters.exec(hashUrl)
     if (!parameterMatch) {
       return
@@ -53,7 +58,13 @@ class SignaturePad extends Component {
 
       const parameterPairSplit = parameterPair.split('<-')
       if (parameterPairSplit.length === 2) {
-        [parameters[parameterPairSplit[0]] = [1]] = parameterPairSplit
+        const key = parameterPairSplit[0]
+        const value = parameterPairSplit[1]
+        const reconstructParameters = {
+          ...parameters,
+          [key]: value,
+        }
+        parameters = reconstructParameters
       }
 
       parameterMatch = regexFindAllSubmittedParameters.exec(hashUrl)
